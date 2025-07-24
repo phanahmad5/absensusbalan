@@ -1,7 +1,7 @@
 <?php
 require 'koneksi.php';
 
-$serverIp = "192.168.160.190"; // Ganti sesuai IP LAN kamu
+$serverIp = getenv("SERVER_IP") ?: "http://localhost";
 $baseUrl = "http://$serverIp/absen_susbalan";
 $message = "";
 $isScan = isset($_GET['scan']);
