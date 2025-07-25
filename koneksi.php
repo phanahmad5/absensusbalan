@@ -1,11 +1,10 @@
 <?php
-$host = getenv("MYSQLHOST") ?: "localhost";
-$port = getenv("MYSQLPORT") ?: 3306;
-$user = getenv("MYSQLUSER") ?: "root";
-$pass = getenv("MYSQLPASSWORD") ?: "";
-$db   = getenv("MYSQLDATABASE") ?: "db_absensi_qr";
+$host = "localhost";
+$user = "root";
+$pass = "";
+$db   = "db_absensi_qr";
 
-$conn = new mysqli($host, $user, $pass, $db, $port);
+$conn = new mysqli($host, $user, $pass, $db);
 if ($conn->connect_error) {
     die("Koneksi gagal: " . $conn->connect_error);
 }
