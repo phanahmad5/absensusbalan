@@ -1,60 +1,54 @@
 <?php
-require 'koneksi.php';
-
-if (!isset($_GET['scan'])) {
-    echo "<h3>❌ QR Code tidak valid.</h3>";
-    exit;
-}
-
-$scanData = $_GET['scan'];
-// Format: id-nama (contoh: 12-Ahmad)
-list($id, $nama) = explode('-', $scanData, 2);
-
-// Cek apakah ID siswa valid
-$stmt = $conn->prepare("SELECT * FROM siswa WHERE id = ?");
-$stmt->bind_param("i", $id);
-$stmt->execute();
-$result = $stmt->get_result();
-
-if ($result->num_rows === 0) {
-    echo "<h3>❌ Siswa tidak ditemukan.</h3>";
-    exit;
-}
-
-// Cek apakah sudah absen hari ini
-$tgl = date('Y-m-d');
-$check = $conn->prepare("SELECT * FROM absensi WHERE siswa_id = ? AND DATE(waktu) = ?");
-$check->bind_param("is", $id, $tgl);
-$check->execute();
-$checkResult = $check->get_result();
-
-if ($checkResult->num_rows > 0) {
-    echo "<div class='msg'>
-            <h3>✅ Halo <strong>$nama</strong>, Anda sudah absen hari ini!</h3>
-          </div>";
-    exit;
-}
-
-// Insert ke tabel absensi
-$insert = $conn->prepare("INSERT INTO absensi (siswa_id) VALUES (?)");
-$insert->bind_param("i", $id);
-$insert->execute();
-
-echo "<div class='msg'>
-        <h3>✅ Selamat datang, <strong>$nama</strong>! Anda berhasil absen hari ini.</h3>
-      </div>";
+$title = "Scan QR Kamera";
+ob_start();
 ?>
 
+<h2>🎥 Scan QR dari Kamera</h2>
+
+<div id="reader" style="width: 100%; max-width: 400px;"></div>
+<div id="result" style="margin-top: 20px; font-size: 18px;"></div>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script>
+    function onScanSuccess(decodedText, decodedResult) {
+        // Menonaktifkan scanner setelah berhasil scan
+        html5QrcodeScanner.clear().then(_ => {
+            // Arahkan ke halaman index.php?scan=...
+            document.getElementById("result").innerHTML = `📡 Mengarahkan ke absensi...`;
+            window.location.href = "index.php?scan=" + encodeURIComponent(decodedText);
+        }).catch(error => {
+            console.error("Gagal membersihkan scanner.", error);
+        });
+    }
+
+    function onScanFailure(error) {
+        // Tidak perlu apa-apa, ini hanya untuk error kecil seperti tidak ada QR
+    }
+
+    const html5QrcodeScanner = new Html5QrcodeScanner(
+        "reader", {
+            fps: 10,
+            qrbox: 250
+        });
+    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+</script>
+
 <style>
-    .msg {
-        background: #e7ffe7;
-        border: 1px solid #b2e2b2;
-        padding: 20px;
-        border-left: 5px solid green;
-        font-family: sans-serif;
-        max-width: 500px;
-        margin: 30px auto;
+    #reader {
+        margin: auto;
+        padding: 10px;
+        background: #fff;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+    }
+    #result {
         text-align: center;
-        box-shadow: 0 0 5px rgba(0,0,0,0.1);
+        margin-top: 20px;
+        color: green;
     }
 </style>
+
+<?php
+$content = ob_get_clean();
+include 'includes/layout.php';
+?>

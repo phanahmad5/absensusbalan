@@ -1,70 +1,108 @@
 <?php
 require 'koneksi.php';
-
-$serverIp = "192.168.160.190"; // Ganti sesuai IP LAN kamu
-$baseUrl = "http://$serverIp/absen_susbalan";
 $message = "";
-$isScan = isset($_GET['scan']);
 
-if ($isScan) {
+if (isset($_GET['scan'])) {
     $data = $_GET['scan'];
-    $parts = explode("-", $data);
-
-    if (count($parts) >= 2) {
+    $parts = explode("-", $data, 2);
+    if (count($parts) === 2) {
         $id = intval($parts[0]);
-        $nama = trim($parts[1]);
+        $nama = urldecode(trim($parts[1]));
 
-        $cekSiswa = $conn->query("SELECT * FROM siswa WHERE id = $id AND nama = '$nama'");
-        if ($cekSiswa->num_rows > 0) {
-            $cekAbsen = $conn->query("SELECT * FROM absensi WHERE siswa_id = $id AND DATE(waktu) = CURDATE()");
+        $stmt = $conn->prepare("SELECT * FROM siswa WHERE id = ? AND LOWER(nama) = LOWER(?)");
+        $stmt->bind_param("is", $id, $nama);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows > 0) {
+            $stmt2 = $conn->prepare("SELECT * FROM absensi WHERE siswa_id = ? AND DATE(waktu_absen) = CURDATE()");
+            $stmt2->bind_param("i", $id);
+            $stmt2->execute();
+            $cekAbsen = $stmt2->get_result();
+
             if ($cekAbsen->num_rows > 0) {
-                $message = "⚠️ <strong>$nama</strong> sudah absen hari ini.";
+                $message = "⚠️ <strong>" . htmlspecialchars($nama) . "</strong> sudah absen hari ini.";
             } else {
-                $conn->query("INSERT INTO absensi (siswa_id, nama) VALUES ($id, '$nama')");
-                $message = "✅ Absensi berhasil untuk <strong>$nama</strong>!";
+                $stmt3 = $conn->prepare("INSERT INTO absensi (siswa_id, waktu_absen, status) VALUES (?, NOW(), 'hadir')");
+                $stmt3->bind_param("i", $id);
+                if ($stmt3->execute()) {
+                    $message = "✅ Absensi berhasil untuk <strong>" . htmlspecialchars($nama) . "</strong>!";
+                } else {
+                    $message = "❌ Gagal menyimpan absensi.";
+                }
             }
         } else {
-            $message = "❌ Data siswa tidak ditemukan.";
+            $message = "❌ Data siswa tidak ditemukan.<br><small>ID: $id | Nama: " . htmlspecialchars($nama) . "</small>";
         }
     } else {
         $message = "❌ Format QR tidak valid.";
     }
 
-    // Jika ini dari scan, tampilkan hanya pesan
     echo "
     <!DOCTYPE html>
     <html lang='id'>
     <head>
         <meta charset='UTF-8'>
-        <title>Absensi</title>
+        <title>Hasil Absensi</title>
         <style>
-            body { font-family: sans-serif; padding: 40px; text-align: center; background: #f0f0f0; }
-            .msg { display: inline-block; padding: 20px; background: #fff; border: 2px solid #2196F3; border-radius: 10px; font-size: 18px; }
+            body { font-family: Arial; text-align: center; padding: 40px; background: #f9f9f9; }
+            .message {
+                background: #fff; padding: 20px; border-radius: 10px;
+                display: inline-block; font-size: 18px; border: 1px solid #ddd;
+            }
+            .buttons {
+                margin-top: 20px;
+            }
+            .buttons a {
+                display: inline-block;
+                margin: 5px;
+                padding: 10px 15px;
+                background-color: #007bff;
+                color: white;
+                text-decoration: none;
+                border-radius: 5px;
+            }
+            .buttons a:hover {
+                background-color: #0056b3;
+            }
         </style>
     </head>
     <body>
-        <div class='msg'>$message</div>
+        <div class='message'>$message</div>
+        <div class='buttons'>
+            <a href='index.php'>🔄 Scan Lagi</a>
+            <a href='siswa.php'>⬅️ Kembali ke Daftar Siswa</a>
+        </div>
     </body>
     </html>
     ";
     exit;
 }
-
-// Jika tidak dari scan (akses langsung), tampilkan dengan layout normal
-$title = "Scan QR Absensi";
-ob_start();
 ?>
 
-<h2>📲 Scan QR & Hadir Otomatis</h2>
+<!-- Tampilan Scanner -->
+<h2>📲 Scan QR untuk Absen</h2>
+<div id="reader" style="width: 100%; max-width: 400px;"></div>
+<div id="result" style="margin-top: 20px; font-size: 18px;"></div>
 
-<div class="box">
-    Scan pakai aplikasi seperti <strong>QR Scanner</strong>, dan buka link hasil scan:<br>
-    <code><?= $baseUrl ?>/index.php?scan=ID-Nama</code><br><br>
-    Contoh: <code><?= $baseUrl ?>/index.php?scan=5-Ahmad</code><br>
-    <small>*Pastikan HP dan Laptop terhubung ke WiFi yang sama</small>
-</div>
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script>
+function onScanSuccess(decodedText) {
+    html5QrcodeScanner.clear().then(_ => {
+        document.getElementById("result").innerHTML = `📡 Mengarahkan ke absensi...`;
+        window.location.href = "index.php?scan=" + encodeURIComponent(decodedText);
+    }).catch(error => console.error("Gagal menghentikan scanner", error));
+}
+const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+html5QrcodeScanner.render(onScanSuccess);
+</script>
 
-<?php
-$content = ob_get_clean();
-include 'includes/layout.php';
-?>
+<style>
+#reader {
+    margin: auto;
+    padding: 10px;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+}
+</style>

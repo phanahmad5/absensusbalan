@@ -11,6 +11,7 @@ $result = $conn->query("SELECT absensi.id, siswa.nama, absensi.waktu
                         JOIN siswa ON absensi.siswa_id = siswa.id 
                         ORDER BY absensi.waktu DESC");
 
+// Buat objek spreadsheet
 $spreadsheet = new Spreadsheet();
 $sheet = $spreadsheet->getActiveSheet();
 
@@ -29,10 +30,14 @@ while ($data = $result->fetch_assoc()) {
     $row++;
 }
 
+// Set judul sheet
+$sheet->setTitle('Rekap Absensi');
+
 // Output sebagai file .xlsx
-$writer = new Xlsx($spreadsheet);
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 header('Content-Disposition: attachment;filename="rekap_absensi.xlsx"');
 header('Cache-Control: max-age=0');
+
+$writer = new Xlsx($spreadsheet);
 $writer->save('php://output');
 exit;

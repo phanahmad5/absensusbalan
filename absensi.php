@@ -3,7 +3,9 @@ require 'koneksi.php';
 $title = "Riwayat Absensi";
 ob_start();
 
-$result = $conn->query("SELECT * FROM absensi ORDER BY waktu DESC");
+$result = $conn->query("SELECT absensi.*, siswa.nama FROM absensi 
+                        JOIN siswa ON absensi.siswa_id = siswa.id 
+                        ORDER BY absensi.waktu_absen DESC");
 ?>
 
 <h2>📋 Riwayat Absensi</h2>
@@ -26,7 +28,7 @@ $result = $conn->query("SELECT * FROM absensi ORDER BY waktu DESC");
         <tr>
             <td><?= $no++ ?></td>
             <td><?= htmlspecialchars($row['nama']) ?></td>
-            <td><?= $row['waktu'] ?></td>
+            <td><?= $row['waktu_absen'] ?></td>
         </tr>
         <?php endwhile; ?>
     </tbody>

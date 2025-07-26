@@ -4,4 +4,6 @@
     <a href="siswa.php">Data Siswa</a>
     <a href="generate_qr.php">Generate QR</a>
     <a href="absensi.php">Absensi</a>
+    <a href="scan.php">Scan QR dengan Kamera</a>
+
 </div>
